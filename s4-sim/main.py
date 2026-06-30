@@ -128,3 +128,48 @@ def get_ehs_incident_extension(incident_id: str):
             }
         }
     return JSONResponse(status_code=404, content={"error": "Clean Core Extension fields not found"})
+
+# ==============================================================================
+# ENDPOINTS: OData V2 - API_BUSINESS_PARTNER (POC Brasil)
+# ==============================================================================
+class BusinessPartner(Base):
+    __tablename__ = "business_partners"
+    bp_id = Column(String, primary_key=True, index=True)
+    country = Column(String)
+    bp_role = Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+@app.post("/sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner")
+async def create_business_partner(request: Request):
+    """
+    Simula la creación de un Cliente en S/4HANA (Role FLCU01).
+    Valida que vengan los datos obligatorios.
+    """
+    data = await request.json()
+    country = data.get("Country")
+    roles = data.get("to_BusinessPartnerRole", {}).get("results", [])
+    
+    # Validar campos obligatorios (Hardcodeado para el POC)
+    if not country:
+        return JSONResponse(status_code=400, content={"error": "Falta el País (Country)"})
+    
+    bp_role = roles[0].get("BusinessPartnerRole") if roles else None
+    if bp_role != "FLCU01":
+        return JSONResponse(status_code=400, content={"error": "Falta el Rol de Cliente (FLCU01)"})
+    
+    # Simular guardado exitoso
+    new_bp_id = f"BP_{uuid.uuid4().hex[:6].upper()}"
+    
+    db = SessionLocal()
+    db.add(BusinessPartner(bp_id=new_bp_id, country=country, bp_role=bp_role))
+    db.commit()
+    db.close()
+    
+    return {
+        "d": {
+            "BusinessPartner": new_bp_id,
+            "Country": country,
+            "to_BusinessPartnerRole": {"results": [{"BusinessPartnerRole": bp_role}]}
+        }
+    }

@@ -1,20 +1,28 @@
-from langchain_core.messages import AIMessage
+from app.tools.sap_tools import create_sap_business_partner
 
 def judge_node(state):
-    """
-    Analiza el input del usuario y extrae entidades SAP.
-    Usamos lógica hardcodeada para el esqueleto.
-    """
-    last_user_message = state["messages"][-2].content.lower() if len(state["messages"]) > 1 else ""
+    """Extrae las entidades e invoca la herramienta SAP"""
+    user_messages = [m.content.lower() for m in state["messages"] if m.type == "human"]
+    last_user_message = user_messages[-1] if user_messages else ""
     
-    # Simulación de extracción de LLM (Function Calling Mock)
     extracted_fields = {}
     if "brasil" in last_user_message or "br" in last_user_message:
         extracted_fields["Country"] = "BR"
     if "mineração" in last_user_message or "cliente" in last_user_message:
-        extracted_fields["BP_Role"] = "FLCU01" # Rol de Cliente SAP
+        extracted_fields["BP_Role"] = "FLCU01" 
         
-    audit_note = "Dados extraídos com sucesso." if extracted_fields else "Faltam dados obrigatórios do cliente."
+    audit_note = ""
+    
+    # Si tenemos ambos datos, intentamos crear el cliente en SAP simulado
+    if "Country" in extracted_fields and "BP_Role" in extracted_fields:
+        # LLAMADA A LA HERRAMIENTA ODATA
+        tool_result = create_sap_business_partner.invoke({
+            "country": extracted_fields["Country"],
+            "bp_role": extracted_fields["BP_Role"]
+        })
+        audit_note = f"Ejecución S/4HANA: {tool_result}"
+    else:
+        audit_note = "Ejecución cancelada: Faltam dados obrigatórios."
         
     return {
         "extracted_sap_fields": extracted_fields,

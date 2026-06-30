@@ -1,42 +1,63 @@
 import os
 import requests
 import json
-from typing import Dict, Any
 from langchain_core.tools import tool
 
 def _ejecutar_handshake_sap(session: requests.Session, url_base: str) -> str:
-    """Simula o ejecuta el handshake CSRF Token nativo de SAP S/4HANA o API Management"""
-    url_fetch = f"{url_base}/sap/opu/odata/sap/API_EHS_INCIDENT_SRV/Incidents('INC-QAS-9921')"
+    """Simula el handshake CSRF Token nativo de SAP S/4HANA"""
+    # Cambiamos /health por un endpoint OData real que SÍ genera token
+    url_fetch = f"{url_base}/sap/opu/odata4/sap/api_material_document/srvd_a2x/sap/materialdocument/0001/MaterialDocument"
     headers = {"x-csrf-token": "Fetch", "Accept": "application/json"}
     try:
+        # Al usar session.get, requests guarda automáticamente la cookie 'sap_session'
         res = session.get(url_fetch, headers=headers, timeout=5)
-        return res.headers.get("x-csrf-token", "local_dev_token")
-    except Exception:
-        return "local_dev_token"
+        # Y aquí extraemos el token que viene en la cabecera
+        return res.headers.get("x-csrf-token", "")
+    except Exception as e:
+        print(f"Handshake failed: {e}")
+        return ""
 
 @tool
-def fetch_sap_ehs_incident_data(incident_id: str) -> str:
-    """Consulta datos transaccionales y de Clean Core en S/4HANA para auditar incidentes ambientales."""
+def create_sap_business_partner(country: str, bp_role: str) -> str:
+    """
+    Herramienta que crea un Cliente (Business Partner) en SAP S/4HANA.
+    Requiere obligatoriamente el código del País y el Rol del BP.
+    """
     base_url = os.getenv("SAP_IS_BASE_URL", "http://s4-sim:8000")
     session = requests.Session()
     
-    api_key = os.getenv("SAP_IS_API_KEY", "")
+    # 1. Obtener Token de Seguridad
     token_csrf = _ejecutar_handshake_sap(session, base_url)
     
     headers = {
         "x-csrf-token": token_csrf,
-        "APIKey": api_key,
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "Content-Type": "application/json"
     }
     
-    url_std = f"{base_url}/sap/opu/odata/sap/API_EHS_INCIDENT_SRV/Incidents('{incident_id}')"
-    url_ext = f"{base_url}/sap/opu/odata/sap/ZAPI_EHS_ENV_EXTENSION_SRV/IncidentExtensions('{incident_id}')"
+    # 2. Armar el payload OData
+    payload = {
+        "Country": country,
+        "to_BusinessPartnerRole": {
+            "results": [
+                {"BusinessPartnerRole": bp_role}
+            ]
+        }
+    }
+    
+    # 3. Disparar a SAP
+    url_post = f"{base_url}/sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner"
     
     try:
-        res_std = session.get(url_std, headers=headers, timeout=5).json()
-        res_ext = session.get(url_ext, headers=headers, timeout=5).json()
-        return json.dumps({"Standard_Header": res_std, "Clean_Core_Extension": res_ext})
+        res = session.post(url_post, headers=headers, json=payload, timeout=5)
+        if res.status_code == 200 or res.status_code == 201:
+            data = res.json()
+            bp_id = data.get("d", {}).get("BusinessPartner")
+            return f"SUCCESS: Business Partner {bp_id} creado correctamente en S/4HANA."
+        else:
+            return f"ERROR SAP: {res.text}"
     except Exception as e:
-        return json.dumps({"error": f"Failed to fetch data from SAP core: {str(e)}"})
+        return f"CRITICAL ERROR: No se pudo conectar a S/4HANA - {str(e)}"
 
-sap_tools_list = [fetch_sap_ehs_incident_data]
+# Lista exportable de herramientas
+sap_tools_list = [create_sap_business_partner]
