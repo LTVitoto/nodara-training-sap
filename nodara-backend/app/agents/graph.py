@@ -5,8 +5,16 @@ from app.agents.judge_agent import judge_node
 from app.agents.auditor_agent import auditor_node
 
 def router_logic(state):
-    if "auditar" in state["messages"][-1].content.lower():
+    """
+    Enrutador semántico: Decide el siguiente paso basado en la intención del usuario.
+    """
+    last_message = state["messages"][-1].content.lower()
+    
+    # Si el usuario intenta enviar datos o dice "criar", pasamos al Juez
+    if "criar" in last_message or "dados" in last_message or "cliente" in last_message:
         return "judge"
+    
+    # Si es solo una charla, se queda con el instructor
     return END
 
 def compile_nodara_graph():

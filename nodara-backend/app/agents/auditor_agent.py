@@ -1,16 +1,14 @@
 from langchain_core.messages import AIMessage
 
 def auditor_node(state):
-    """Aplica la rúbrica corporativa Clean Core y emite el dictamen final"""
-    findings = state.get("audit_findings", {})
-    ext_fields = findings.get("Clean_Core_Extension", {}).get("d", {})
+    """
+    Emite el dictamen final en portugués basándose en los datos de SAP extraídos.
+    """
+    fields = state.get("extracted_sap_fields", {})
     
-    toxicidad = ext_fields.get("Z_Toxicidad", 0)
-    distancia = ext_fields.get("Z_Distancia_Agua", None)
-    
-    if toxicidad > 30 and distancia is None:
-        dictamen = "CRÍTICO: El Auditor detectó violación de Clean Core. Toxicidad alta sin distancia a fuentes hídricas registrada. Alumno reprobado por omisión regulatoria."
+    if "Country" in fields and "BP_Role" in fields:
+        dictamen = "Parabéns! Os dados estão corretos de acordo com a norma australiana. O Cliente SAP foi validado e está pronto para ser criado no S/4HANA."
     else:
-        dictamen = "CUMPLIMIENTO TOTAL: Los datos en S/4HANA satisfacen los controles de la minera."
+        dictamen = "Atenção: Faltam campos obrigatórios (País ou Função do BP). Por favor, revise o procedimento e tente novamente."
         
     return {"messages": [AIMessage(content=dictamen)]}
