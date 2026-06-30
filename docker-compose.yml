@@ -23,7 +23,7 @@ services:
 
   # Observabilidad Avanzada de LLMs y Agentes Autónomos (Langfuse)
   langfuse-server:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:2
     container_name: nodara_langfuse
     ports:
       - "3000:3000"
