@@ -1,0 +1,31 @@
+apiVersion: gateway.kyma-project.io/v1beta1
+kind: APIRule
+metadata:
+  name: nodara-backend-api
+  namespace: nodara-training
+  labels:
+    app: nodara-backend
+spec:
+  host: api-nodara
+  gateway: kyma-gateway.kyma-system.svc.cluster.local
+  service:
+    name: nodara-backend-svc
+    port: 8000
+  rules:
+    - path: /health
+      methods: ["GET"]
+      accessStrategies:
+        - handler: allow
+    - path: /api/.*
+      methods: ["GET", "POST", "OPTIONS"]
+      accessStrategies:
+        - handler: jwt
+          config:
+            trusted_issuers:
+              - "https://subcuenta-prod.authentication.eu10.hana.ondemand.com/oauth/token"
+      corsPolicy:
+        allowOrigins:
+          - "https://*.fiori.ondemand.com"
+        allowMethods: ["GET", "POST", "OPTIONS"]
+        allowHeaders: ["Authorization", "Content-Type", "Accept"]
+        allowCredentials: true

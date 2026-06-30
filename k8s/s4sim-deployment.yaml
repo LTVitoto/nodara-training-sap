@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s4-sim
+  namespace: nodara-training
+  labels:
+    app: s4-sim
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s4-sim
+  template:
+    metadata:
+      labels:
+        app: s4-sim
+    spec:
+      containers:
+        - name: s4-sim-container
+          image: myregistry.com/s4-sim:v1.0.0
+          ports:
+            - containerPort: 8000
+              name: http
+          volumeMounts:
+            - name: s4-storage
+              mountPath: /app/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+      volumes:
+        - name: s4-storage
+          persistentVolumeClaim:
+            claimName: s4-sim-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s4-sim-svc
+  namespace: nodara-training
+spec:
+  type: ClusterIP
+  selector:
+    app: s4-sim
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000

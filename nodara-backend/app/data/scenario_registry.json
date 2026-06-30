@@ -1,0 +1,18 @@
+{
+  "SCENARIO_EHS_001": {
+    "name": "Registro de Derrame Químico Ambiental en faena minera",
+    "required_apis": [
+      {
+        "api_name": "API_EHS_INCIDENT_SRV",
+        "entity": "Incidents",
+        "purpose": "Auditar cabecera de cumplimiento ambiental"
+      },
+      {
+        "api_name": "ZAPI_EHS_ENV_EXTENSION_SRV",
+        "entity": "IncidentExtensions",
+        "purpose": "Verificar criticidad hídrica bajo Clean Core"
+      }
+    ],
+    "rubric": "IF Z_Toxicidad > 30 THEN Z_Distancia_Agua CANNOT BE NULL. Alumno debe auditar e identificar omisión."
+  }
+}
