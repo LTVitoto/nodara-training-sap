@@ -1,47 +1,12 @@
-from fastapi import APIRouter
-from app.core import config
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from app.services.rag_ingestion import ejecutar_chunking_y_embedding
+from app.services.hana_vector_store import engine
+from sqlalchemy import text
 
 router = APIRouter()
 
-@router.post("/upload-pdf")
-async def upload_mining_manual():
-    return {
-        "status": "success",
-        "detail": f"Manual recibido. Entorno activo: {config.ENVIRONMENT}. Ingestando a HANA Vector Store."
-    }
-
-@router.get("/kpis")
-def get_dashboard_kpis():
-    # FORMATO COMPATIBLE NATIVO CON SAP FIORI ELEMENTS OVERVIEW PAGE
-    return {
-        "d": {
-            "results": [
-                {
-                    "__metadata": {
-                        "id": "ResilienceKPISet('1')",
-                        "uri": "/api/kpis('1')",
-                        "type": "NodaraModel.ResilienceKPI"
-                    },
-                    "ID": "1",
-                    "CompanyCode": "1000",
-                    "Filial": "Australia Principal",
-                    "TasaResiliencia": 92.4,
-                    "ErroresEvitados": 42,
-                    "MitigacionFinancieraUSD": 840000.00
-                },
-                {
-                    "__metadata": {
-                        "id": "ResilienceKPISet('2')",
-                        "uri": "/api/kpis('2')",
-                        "type": "NodaraModel.ResilienceKPI"
-                    },
-                    "ID": "2",
-                    "CompanyCode": "2000",
-                    "Filial": "Brasil Operaciones",
-                    "TasaResiliencia": 78.1,
-                    "ErroresEvitados": 19,
-                    "MitigacionFinancieraUSD": 310000.00
-                }
-            ]
-        }
-    }
+@router.post("/rag/ingest")
+async def upload_manual(exam_id: str = Form(...), file: UploadFile = File(...)):
+    try:
+        return ejecutar_chunking_y_embedding(await file.read(), file.filename, exam_id)
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e))

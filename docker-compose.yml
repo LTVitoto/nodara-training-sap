@@ -1,88 +1,45 @@
-version: '3.8'
-
 services:
-  # Base de Datos Relacional para LangGraph Checkpointer, Telemetría Langfuse y Vector Store Local
-  postgres-db:
-    image: postgres:15-alpine
-    container_name: nodara_postgres
+  postgres-service:
+    image: pgvector/pgvector:pg15
+    restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secretpassword
-      POSTGRES_DB: nodara_db
+      - POSTGRES_USER=nodara_user
+      - POSTGRES_PASSWORD=NodaraPass2026!
+      - POSTGRES_DB=nodara_db
     ports:
       - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - nodara_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d nodara_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
-  # Observabilidad Avanzada de LLMs y Agentes Autónomos (Langfuse)
-  langfuse-server:
+  s4-sim-service:
+    build: ./s4-sim
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://nodara_user:NodaraPass2026!@postgres-service:5432/nodara_db
+    depends_on:
+      - postgres-service
+
+  langfuse-service:
     image: langfuse/langfuse:2
-    container_name: nodara_langfuse
+    restart: always
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://admin:secretpassword@postgres-db:5432/nodara_db
-      - NEXTAUTH_SECRET=super_secret_session_string_for_nodara_production_2026
-      - SALT=super_cryptographic_salt_value_for_enterprise_passwords
+      - DATABASE_URL=postgresql://nodara_user:NodaraPass2026!@postgres-service:5432/nodara_db
+      - NEXTAUTH_SECRET=super-secret-nextauth-token-2026
       - NEXTAUTH_URL=http://localhost:3000
+      - SALT=${SALT}
     depends_on:
-      postgres-db:
-        condition: service_healthy
-    networks:
-      - nodara_network
+      - postgres-service
 
-  # El Simulador de SAP S/4HANA con Handshake CSRF y endpoints OData V2/V4 Nativos
-  s4-sim:
-    build:
-      context: ./s4-sim
-      dockerfile: Dockerfile
-    container_name: nodara_s4_sim
+  nodara-backend-ai:
+    build: ./nodara-backend
+    restart: always
     ports:
-      - "8081:8000"
-    volumes:
-      - s4data:/app/data
-    networks:
-      - nodara_network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # El Cerebro de Inteligencia Artificial (FastAPI + LangGraph Orquestador)
-  nodara-backend:
-    build:
-      context: ./nodara-backend
-      dockerfile: Dockerfile
-    container_name: nodara_backend_ai
-    ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file:
       - .env
-    environment:
-      - ENVIRONMENT=local
-      - DATABASE_URL=postgresql://admin:secretpassword@postgres-db:5432/nodara_db
-      - SAP_IS_BASE_URL=http://s4-sim:8000
-      - LANGFUSE_HOST=http://langfuse-server:3000
     depends_on:
-      postgres-db:
-        condition: service_healthy
-      s4-sim:
-        condition: service_healthy
-    networks:
-      - nodara_network
-
-volumes:
-  pgdata:
-  s4data:
-
-networks:
-  nodara_network:
-    driver: bridge
+      - postgres-service
+      - s4-sim-service
+      - langfuse-service

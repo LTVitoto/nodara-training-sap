@@ -3,17 +3,18 @@ from langchain_core.messages import BaseMessage
 import operator
 
 class NodaraState(TypedDict):
-    # LA MAGIA ESTÁ AQUÍ: operator.add le dice a LangGraph que ACUMULE los mensajes
     messages: Annotated[List[BaseMessage], operator.add]
-    scenario_id: str
+    user_id: str
+    exam_id: str
     company_code: str
-    
-    # Contexto Operativo
+    current_question_index: int
+    total_questions: int
     source_manual_language: str
     target_training_language: str
     target_sap_process: str
-    
-    # Memoria de Auditoría (Estos NO llevan operator.add porque sí queremos que se sobrescriban)
+    active_question_text: str
+    active_rubric_json: Dict[str, Any]
     extracted_sap_fields: Dict[str, Any]
     audit_findings: str
-    next_node: str
+    is_approved: bool
+    retry_count: int

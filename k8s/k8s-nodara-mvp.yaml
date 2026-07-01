@@ -1,0 +1,234 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nodara-training
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nodara-config
+  namespace: nodara-training
+data:
+  SAP_ENV: "dev.cloud"
+  DATABASE_URL: "postgresql://nodara_user:NodaraPass2026!@postgres-service:5432/nodara_db"
+  SAP_IS_BASE_URL: "http://s4-sim-service:8000"
+  LANGFUSE_HOST: "http://langfuse-service:3000"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nodara-secrets
+  namespace: nodara-training
+type: Opaque
+stringData:
+  # <--- SUSTITUIR AQUÍ: Pega tu llave pública (ej: pk-lf-df959196-ec32-496b-b53d-43583a3ae16c)
+  LANGFUSE_PUBLIC_KEY: "pk-lf-xx"
+  
+  # <--- SUSTITUIR AQUÍ: Pega tu llave secreta (ej: sk-lf-2e21ae24-5326-4da5-812c-68d1bcd079b8)
+  LANGFUSE_SECRET_KEY: "sk-lf-xx"
+  
+  # <--- SUSTITUIR AQUÍ: Pega el SALT de seguridad para Langfuse v3 (ej: nodara-super-secret-salt-2026)
+  SALT: "ingresa-tu-salt-aqui"
+  
+  # <--- SUSTITUIR AQUÍ: Client ID extraído de tu Service Key de SAP AI Core en BTP
+  SAP_AICORE_CLIENT_ID: "xxxx"
+  
+  # <--- SUSTITUIR AQUÍ: Client Secret extraído de tu Service Key de SAP AI Core
+  SAP_AICORE_CLIENT_SECRET: "xxxx"
+  
+  # <--- SUSTITUIR AQUÍ: URL de autenticación de tu Service Key de SAP BTP
+  SAP_AICORE_AUTH_URL: "https://tenant.authentication.kyma.ondemand.com"
+  
+  # <--- SUSTITUIR AQUÍ: URL base de la API de AI Core (asegúrate de que termine en /v2)
+  SAP_AICORE_BASE_URL: "https://api.ai.prod.kyma.ondemand.com/v2"
+  
+  # <--- VALIDAR AQUÍ: Déjalo en "default" a menos que hayas creado otro Resource Group en AI Core
+  SAP_AICORE_RESOURCE_GROUP: "default"
+  
+  # <--- VALIDAR AQUÍ: Nombre de tu despliegue en el Generative AI Hub (normalmente gpt-4o)
+  SAP_OPENAI_DEPLOYMENT_ID: "gpt-4o"
+---
+# ==========================================
+# DESPLIEGUES DE BASES DE DATOS Y SERVICIOS
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+  namespace: nodara-training
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: pgvector/pgvector:pg15
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "nodara_user"
+        - name: POSTGRES_PASSWORD
+          value: "NodaraPass2026!"
+        - name: POSTGRES_DB
+          value: "nodara_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: nodara-training
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s4-sim-deployment
+  namespace: nodara-training
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s4-sim
+  template:
+    metadata:
+      labels:
+        app: s4-sim
+    spec:
+      containers:
+      - name: s4-sim
+        # <--- SUSTITUIR AQUÍ: Reemplaza TU_USUARIO_DOCKERHUB por tu cuenta real. Nota: Etiqueta actualizada a v2.0
+        image: TU_USUARIO_DOCKERHUB/nodara-s4-sim:v2.0
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: nodara-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s4-sim-service
+  namespace: nodara-training
+spec:
+  ports:
+  - port: 8000
+  selector:
+    app: s4-sim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-deployment
+  namespace: nodara-training
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langfuse
+  template:
+    metadata:
+      labels:
+        app: langfuse
+    spec:
+      containers:
+      - name: langfuse
+        image: langfuse/langfuse:2
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NEXTAUTH_SECRET
+          value: "super-secret-nextauth-token-2026"
+        - name: NEXTAUTH_URL
+          value: "http://localhost:3000"
+        envFrom:
+        - configMapRef:
+            name: nodara-config
+        - secretRef:
+            name: nodara-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-service
+  namespace: nodara-training
+spec:
+  ports:
+  - port: 3000
+  selector:
+    app: langfuse
+---
+# ==========================================
+# DESPLIEGUE DEL CEREBRO DE IA (BACKEND)
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodara-backend-deployment
+  namespace: nodara-training
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nodara-backend
+  template:
+    metadata:
+      labels:
+        app: nodara-backend
+    spec:
+      containers:
+      - name: nodara-backend
+        # <--- SUSTITUIR AQUÍ: Reemplaza TU_USUARIO_DOCKERHUB por tu cuenta real. Nota: Etiqueta actualizada a v2.0
+        image: TU_USUARIO_DOCKERHUB/nodara-backend-ai:v2.0
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: nodara-config
+        - secretRef:
+            name: nodara-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodara-backend-service
+  namespace: nodara-training
+spec:
+  ports:
+  - port: 8000
+  selector:
+    app: nodara-backend
+---
+# ==========================================
+# EXPOSICIÓN A INTERNET (KYMA APIRULES)
+# ==========================================
+apiVersion: gateway.kyma-project.io/v1alpha1
+kind: APIRule
+metadata:
+  name: nodara-backend-apirule
+  namespace: nodara-training
+spec:
+  # <--- VALIDAR AQUÍ: En algunos clusters Kyma, el gateway es 'kyma-system/kyma-gateway' en vez del formato largo. Ajusta si te da error al aplicar.
+  gateway: kyma-gateway.kyma-system.svc.cluster.local
+  service:
+    name: nodara-backend-service
+    port: 8000
+  # <--- VALIDAR AQUÍ: Si tu cluster requiere el subdominio completo, agrégalo (ej: nodara-api-brain.c-12345.kyma.ondemand.com)
+  host: nodara-api-brain
+  rules:
+    - path: /.*
+      methods: ["GET", "POST", "OPTIONS"]
+      accessStrategies:
+        - handler: no_auth
