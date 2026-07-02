@@ -8,10 +8,14 @@ pgvector>=0.2.0
 langchain>=0.1.0
 langchain-core>=0.1.0
 langchain-openai>=0.0.2
-langchain-text-splitters>=0.0.1  # <--- ESTA ES LA LÍNEA NUEVA
+langchain-text-splitters>=0.0.1
 langgraph>=0.0.10
 langfuse>=3.0.0
 backoff>=2.2.1
 requests>=2.31.0
 generative-ai-hub-sdk>=0.0.1
 python-multipart>=0.0.6
+pypdf>=4.1.0
+# --- DRIVERS PARA SAP HANA CLOUD (PRODUCCIÓN) ---
+hdbcli>=2.20.22
+sqlalchemy-hana>=1.2.1

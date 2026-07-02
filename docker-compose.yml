@@ -35,6 +35,8 @@ services:
   nodara-backend-ai:
     build: ./nodara-backend
     restart: always
+    # <--- CORRECCIÓN APLICADA: Timeouts extendidos a 600 segundos
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 600 --timeout-graceful-shutdown 600
     ports:
       - "8001:8000"
     env_file:

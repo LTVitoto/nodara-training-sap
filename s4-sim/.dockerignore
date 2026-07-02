@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Entornos Virtuales de Python
+venv/
+env/
+.venv/
+
+# Archivos de caché y compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Variables de entorno y secretos locales (¡CRÍTICO!)
+.env
+.env.local
+*.pem
+*.key
+
+# Archivos de Docker y Kubernetes (No se necesitan dentro de la imagen)
+Dockerfile
+.dockerignore
+docker-compose.yml
+k8s/
+
+# IDEs y SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
